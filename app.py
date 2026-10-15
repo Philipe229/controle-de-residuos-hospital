@@ -152,7 +152,7 @@ HTML_FORMULARIO = """
 
     <header class="w-full bg-gradient-to-r from-blue-900 via-indigo-900 to-violet-900 rounded-2xl shadow-xl p-6 text-white mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-            <img src="{{ url_for('static', filename='logo_esquerda.jpg') }}" alt="Logo Esquerda" class="h-14 w-auto object-contain bg-white/10 p-1.5 rounded-xl">
+            <img src="{{ url_for('static', filename='logo_direita.jpg') }}" alt="Logo Direita" class="h-14 w-auto object-contain bg-white/10 p-1.5 rounded-xl">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight">Gestão Inteligente de Resíduos Hospitalares</h1>
                 <p class="text-blue-200 text-xs mt-0.5">Sistema de Lançamento, Classificação e Monitoramento de Pesagem (2026)</p>
