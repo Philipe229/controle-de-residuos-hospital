@@ -1,0 +1,14 @@
+{
+    "admin": {
+        "hash": "scrypt:32768:8:1$1jgTKtxXSpZ7uJcO$1486655265a20f2efdd604b7aac3770f601be3c42d6d06ec6947867c6b78a35722233a6ae66c32ef6ae77d7087c8b4811ccf50ca7dd50fe130c29c5ce4549fbe",
+        "role": "admin"
+    },
+    "suporte": {
+        "hash": "scrypt:32768:8:1$Ss3s78J1PwC1fHd0$10bcc993d018803ff6b9aebbe185b86c962ed565aee33086479d9abbaf408ecdac58775711f3e22c43b3439c2d4ffb389b49919ccf5d0b5a80e63775e93b8e02",
+        "role": "admin"
+    },
+    "teste": {
+        "hash": "scrypt:32768:8:1$5uFjD2p1OINKBFBs$e5749a520095d9e8e4c8453da6797edb6265130223a915f2f2981170bfe7bc5552d50835d3765af00c89b1feb9eb752ad8d62dadd05e59ed333bd8cc5dee6e98",
+        "role": "operador"
+    }
+}
