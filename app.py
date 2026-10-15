@@ -311,7 +311,7 @@ HTML_FORMULARIO = """
                     </div>
 
                     <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 space-y-2">
-                        <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Reciclagem Cedo</span>
+                        <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Reciclagem</span>
                         <div class="grid grid-cols-2 gap-2">
                             <div><label class="block text-[10px] font-semibold text-slate-500 mb-0.5">Qtd. Carrinhos</label><input type="number" name="qtd_reciclavel" value="0" min="0" required class="w-full px-2 py-1.5 bg-white border rounded-lg text-xs"></div>
                             <div><label class="block text-[10px] font-semibold text-slate-500 mb-0.5">Peso (Kg)</label><input type="number" name="peso_reciclavel" value="0.0" min="0" step="0.01" required class="w-full px-2 py-1.5 bg-white border rounded-lg text-xs"></div>
