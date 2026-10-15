@@ -43,5 +43,4 @@ O projeto foi construído utilizando as seguintes tecnologias e bibliotecas:
 
 1. Clone o repositório:
    ```bash
-   git clone [https://github.com/Philipe229/controle-de-residuos-hospital.git](https://github.com/Philipe229/controle-de-residuos-hospital.git)
-   cd controle-de-residuos-hospital
+   git clone https://github.com/Philipe229/controle-de-residuos-hospital.git
