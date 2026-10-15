@@ -1,3 +1,5 @@
+# importações de dados.
+
 import os
 import json
 import sqlite3
@@ -77,7 +79,7 @@ def garantir_banco():
     conn.close()
 
 # -------------------------------------------------------------------
-# TEMPLATES HTML
+# Interface do sistema em HTML.
 # -------------------------------------------------------------------
 HTML_LOGIN = """
 <!DOCTYPE html>
@@ -512,7 +514,7 @@ HTML_FILTROS_RELATORIO = """
 </body>
 </html>
 """
-
+# usuarios 
 HTML_USUARIOS = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -975,7 +977,7 @@ def excluir_registro():
     return redirect(url_for("listar_registros"))
 
 from waitress import serve
-
+# local de acesso mais banco em Waitress
 if __name__ == "__main__":
     garantir_banco()
     print("Servidor rodando com Waitress em http://0.0.0.0:8080")
