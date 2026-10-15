@@ -14,6 +14,13 @@ from openpyxl.chart import BarChart, Reference
 import io
 from pypdf import PdfReader
 
+# Importação condicional para PostgreSQL na nuvem
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+
 app = Flask(__name__)
 app.secret_key = "segredo_residuos_2026_sessao"
 
@@ -53,28 +60,59 @@ def usuario_admin():
     usuarios = carregar_usuarios()
     return usuarios.get(user, {}).get("role", "").lower() == "admin"
 
+def obter_conexao():
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url and psycopg2:
+        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        return conn, "postgres"
+    else:
+        conn = sqlite3.connect(CAMINHO_DB)
+        conn.row_factory = sqlite3.Row
+        return conn, "sqlite"
+
 def garantir_banco():
-    conn = sqlite3.connect(CAMINHO_DB)
+    conn, tipo = obter_conexao()
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS residuos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ano TEXT NOT NULL,
-            mes TEXT NOT NULL,
-            data TEXT NOT NULL,
-            localidade TEXT NOT NULL,
-            qtd_infectante INTEGER DEFAULT 0,
-            peso_infectante REAL DEFAULT 0.0,
-            qtd_organico INTEGER DEFAULT 0,
-            peso_organico REAL DEFAULT 0.0,
-            qtd_comum INTEGER DEFAULT 0,
-            peso_comum REAL DEFAULT 0.0,
-            qtd_reciclavel INTEGER DEFAULT 0,
-            peso_reciclavel REAL DEFAULT 0.0,
-            qtd_quimico INTEGER DEFAULT 0,
-            peso_quimico REAL DEFAULT 0.0
-        )
-    """)
+    if tipo == "postgres":
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS residuos (
+                id SERIAL PRIMARY KEY,
+                ano TEXT NOT NULL,
+                mes TEXT NOT NULL,
+                data TEXT NOT NULL,
+                localidade TEXT NOT NULL,
+                qtd_infectante INTEGER DEFAULT 0,
+                peso_infectante REAL DEFAULT 0.0,
+                qtd_organico INTEGER DEFAULT 0,
+                peso_organico REAL DEFAULT 0.0,
+                qtd_comum INTEGER DEFAULT 0,
+                peso_comum REAL DEFAULT 0.0,
+                qtd_reciclavel INTEGER DEFAULT 0,
+                peso_reciclavel REAL DEFAULT 0.0,
+                qtd_quimico INTEGER DEFAULT 0,
+                peso_quimico REAL DEFAULT 0.0
+            )
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS residuos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ano TEXT NOT NULL,
+                mes TEXT NOT NULL,
+                data TEXT NOT NULL,
+                localidade TEXT NOT NULL,
+                qtd_infectante INTEGER DEFAULT 0,
+                peso_infectante REAL DEFAULT 0.0,
+                qtd_organico INTEGER DEFAULT 0,
+                peso_organico REAL DEFAULT 0.0,
+                qtd_comum INTEGER DEFAULT 0,
+                peso_comum REAL DEFAULT 0.0,
+                qtd_reciclavel INTEGER DEFAULT 0,
+                peso_reciclavel REAL DEFAULT 0.0,
+                qtd_quimico INTEGER DEFAULT 0,
+                peso_quimico REAL DEFAULT 0.0
+            )
+        """)
     conn.commit()
     conn.close()
 
@@ -355,17 +393,37 @@ HTML_FORMULARIO = """
 
     </main>
 
+    <!-- Modal Expandido com Filtro de Mês -->
     <div id="modalGrafico" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl p-6 relative border border-slate-200 flex flex-col">
-            <div class="flex items-center justify-between pb-4 mb-4 border-b">
+            <div class="flex flex-col md:flex-row items-center justify-between pb-4 mb-4 border-b gap-4">
                 <div>
                     <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <i data-lucide="bar-chart-2" class="w-6 h-6 text-indigo-600"></i> Visão Detalhada do Gráfico Comparativo
                     </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Indicadores mensais consolidados por categoria de resíduos</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Visualize o ano completo ou selecione um mês específico</p>
                 </div>
                 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-600 uppercase">Filtrar:</label>
+                        <select id="filtroMesModal" onchange="atualizarGraficoModal()" class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                            <option value="TODOS">Ano Completo (Todos os Meses)</option>
+                            <option value="JANEIRO">Janeiro</option>
+                            <option value="FEVEREIRO">Fevereiro</option>
+                            <option value="MARÇO">Março</option>
+                            <option value="ABRIL">Abril</option>
+                            <option value="MAIO">Maio</option>
+                            <option value="JUNHO">Junho</option>
+                            <option value="JULHO">Julho</option>
+                            <option value="AGOSTO">Agosto</option>
+                            <option value="SETEMBRO">Setembro</option>
+                            <option value="OUTUBRO">Outubro</option>
+                            <option value="NOVEMBRO">Novembro</option>
+                            <option value="DEZEMBRO">Dezembro</option>
+                        </select>
+                    </div>
+
                     <button onclick="baixarGraficoPNG()" class="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition shadow cursor-pointer">
                         <i data-lucide="download" class="w-4 h-4"></i> Baixar Gráfico (.png)
                     </button>
@@ -375,7 +433,7 @@ HTML_FORMULARIO = """
                 </div>
             </div>
             
-            <div class="relative w-full h-[540px]">
+            <div class="relative w-full h-[520px]">
                 <canvas id="graficoResiduosModal"></canvas>
             </div>
         </div>
@@ -414,7 +472,7 @@ HTML_FORMULARIO = """
                 });
             }
 
-            // Gráfico Mensal de Barras
+            // Gráfico Mensal Principal de Barras
             const ctx = document.getElementById('graficoResiduos').getContext('2d');
             const dg = {{ dados_grafico | tojson }};
             const labels = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
@@ -471,7 +529,6 @@ HTML_FORMULARIO = """
                             position: 'bottom',
                             labels: { font: { family: 'Inter', size: 11 } }
                         },
-                        // Configuração do plugin para calcular e mostrar a % no próprio gráfico
                         datalabels: {
                             color: '#fff',
                             font: {
@@ -494,9 +551,37 @@ HTML_FORMULARIO = """
 
         function abrirModalGrafico() {
             document.getElementById('modalGrafico').classList.remove('hidden');
+            document.getElementById('filtroMesModal').value = 'TODOS';
+            atualizarGraficoModal();
+        }
+
+        function atualizarGraficoModal() {
             const ctxModal = document.getElementById('graficoResiduosModal').getContext('2d');
             const dg = {{ dados_grafico | tojson }};
-            const labels = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+            const mesSelecionado = document.getElementById('filtroMesModal').value;
+
+            let labels = [];
+            let datasetsConfig = [];
+
+            if (mesSelecionado === 'TODOS') {
+                labels = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+                datasetsConfig = [
+                    { label: 'Infectante', data: labels.map(m => dg.infectante[m] || 0), backgroundColor: 'rgba(225, 29, 72, 0.85)', borderRadius: 6 },
+                    { label: 'Compostagem', data: labels.map(m => dg.organico[m] || 0), backgroundColor: 'rgba(217, 119, 6, 0.85)', borderRadius: 6 },
+                    { label: 'Comum Geral', data: labels.map(m => dg.comum[m] || 0), backgroundColor: 'rgba(30, 58, 138, 0.85)', borderRadius: 6 },
+                    { label: 'Reciclagem', data: labels.map(m => dg.reciclavel[m] || 0), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 },
+                    { label: 'Químico', data: labels.map(m => dg.quimico[m] || 0), backgroundColor: 'rgba(147, 51, 234, 0.85)', borderRadius: 6 }
+                ];
+            } else {
+                labels = [mesSelecionado];
+                datasetsConfig = [
+                    { label: 'Infectante', data: [dg.infectante[mesSelecionado] || 0], backgroundColor: 'rgba(225, 29, 72, 0.85)', borderRadius: 6 },
+                    { label: 'Compostagem', data: [dg.organico[mesSelecionado] || 0], backgroundColor: 'rgba(217, 119, 6, 0.85)', borderRadius: 6 },
+                    { label: 'Comum Geral', data: [dg.comum[mesSelecionado] || 0], backgroundColor: 'rgba(30, 58, 138, 0.85)', borderRadius: 6 },
+                    { label: 'Reciclagem', data: [dg.reciclavel[mesSelecionado] || 0], backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 },
+                    { label: 'Químico', data: [dg.quimico[mesSelecionado] || 0], backgroundColor: 'rgba(147, 51, 234, 0.85)', borderRadius: 6 }
+                ];
+            }
 
             if (chartModalInstance) chartModalInstance.destroy();
 
@@ -504,13 +589,7 @@ HTML_FORMULARIO = """
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [
-                        { label: 'Infectante', data: labels.map(m => dg.infectante[m] || 0), backgroundColor: 'rgba(225, 29, 72, 0.85)', borderRadius: 6 },
-                        { label: 'Compostagem', data: labels.map(m => dg.organico[m] || 0), backgroundColor: 'rgba(217, 119, 6, 0.85)', borderRadius: 6 },
-                        { label: 'Comum Geral', data: labels.map(m => dg.comum[m] || 0), backgroundColor: 'rgba(30, 58, 138, 0.85)', borderRadius: 6 },
-                        { label: 'Reciclagem', data: labels.map(m => dg.reciclavel[m] || 0), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 },
-                        { label: 'Químico', data: labels.map(m => dg.quimico[m] || 0), backgroundColor: 'rgba(147, 51, 234, 0.85)', borderRadius: 6 }
-                    ]
+                    datasets: datasetsConfig
                 },
                 options: {
                     responsive: true,
@@ -527,10 +606,13 @@ HTML_FORMULARIO = """
 
         function baixarGraficoPNG() {
             const canvas = document.getElementById('graficoResiduosModal');
+            const mesSelecionado = document.getElementById('filtroMesModal').value;
+            const nomeFicheiro = mesSelecionado === 'TODOS' ? 'grafico_comparativo_anual.png' : `grafico_residuos_${mesSelecionado.toLowerCase()}.png`;
+            
             const imageURL = canvas.toDataURL('image/png');
             const link = document.createElement('a');
             link.href = imageURL;
-            link.download = 'grafico_comparativo_residuos.png';
+            link.download = nomeFicheiro;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -601,7 +683,7 @@ HTML_FILTROS_RELATORIO = """
 </body>
 </html>
 """
-# usuarios 
+
 HTML_USUARIOS = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -750,7 +832,7 @@ def index():
     e_admin = usuario_admin()
 
     garantir_banco()
-    conn = sqlite3.connect(CAMINHO_DB)
+    conn, tipo = obter_conexao()
     cursor = conn.cursor()
     
     # 1. Consulta para o Gráfico Mensal
@@ -829,12 +911,15 @@ def salvar():
     data_formatada = dt.strftime("%d/%m/%Y")
 
     garantir_banco()
-    conn = sqlite3.connect(CAMINHO_DB)
+    conn, tipo = obter_conexao()
     cursor = conn.cursor()
-    cursor.execute("""
+    
+    ph = "%s" if tipo == "postgres" else "?"
+    query = f"""
         INSERT INTO residuos (ano, mes, data, localidade, qtd_infectante, peso_infectante, qtd_organico, peso_organico, qtd_comum, peso_comum, qtd_reciclavel, peso_reciclavel, qtd_quimico, peso_quimico)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (ano_escolhido, mes_escolhido, data_formatada, localidade.upper(), qtd_inf, peso_inf, qtd_org, peso_org, qtd_comum, peso_comum, qtd_rec, peso_rec, qtd_qui, peso_qui))
+        VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+    """
+    cursor.execute(query, (ano_escolhido, mes_escolhido, data_formatada, localidade.upper(), qtd_inf, peso_inf, qtd_org, peso_org, qtd_comum, peso_comum, qtd_rec, peso_rec, qtd_qui, peso_qui))
     conn.commit()
     conn.close()
 
@@ -862,7 +947,7 @@ def importar_pdf_sistema():
         try:
             reader = PdfReader(temp_path)
             garantir_banco()
-            conn = sqlite3.connect(CAMINHO_DB)
+            conn, tipo = obter_conexao()
             cursor = conn.cursor()
 
             meses_map = {
@@ -911,10 +996,12 @@ def importar_pdf_sistema():
                             try:
                                 peso_val = float(peso_str)
                                 if peso_val > 0:
-                                    cursor.execute("""
+                                    ph = "%s" if tipo == "postgres" else "?"
+                                    query = f"""
                                         INSERT INTO residuos (ano, mes, data, localidade, qtd_infectante, peso_infectante, qtd_organico, peso_organico, qtd_comum, peso_comum, qtd_reciclavel, peso_reciclavel, qtd_quimico, peso_quimico)
-                                        VALUES (?, ?, ?, ?, 0, 0.0, 0, 0.0, 1, ?, 0, 0.0, 0, 0.0)
-                                    """, (ano, mes_nome, data_fmt, setor_encontrado, peso_val))
+                                        VALUES ({ph}, {ph}, {ph}, {ph}, 0, 0.0, 0, 0.0, 1, {ph}, 0, 0.0, 0, 0.0)
+                                    """
+                                    cursor.execute(query, (ano, mes_nome, data_fmt, setor_encontrado, peso_val))
                                     total_importados += 1
                             except:
                                 pass
@@ -948,10 +1035,11 @@ def relatorio_excel_gerar():
     filtro_ano = request.form.get("filtro_ano", "TODOS").strip()
 
     garantir_banco()
-    conn = sqlite3.connect(CAMINHO_DB)
+    conn, tipo = obter_conexao()
     cursor = conn.cursor()
 
-    query = """
+    ph = "%s" if tipo == "postgres" else "?"
+    query = f"""
         SELECT ano, mes, data, localidade, 
                qtd_infectante, peso_infectante, 
                qtd_organico, peso_organico, 
@@ -963,10 +1051,10 @@ def relatorio_excel_gerar():
     parametros = []
 
     if filtro_localidade != "TODOS":
-        query += " AND localidade = ?"
+        query += f" AND localidade = {ph}"
         parametros.append(filtro_localidade.upper())
     if filtro_ano.upper() != "TODOS":
-        query += " AND ano = ?"
+        query += f" AND ano = {ph}"
         parametros.append(filtro_ano)
 
     cursor.execute(query, parametros)
@@ -1061,7 +1149,7 @@ def deletar_usuario():
 def listar_registros():
     if "usuario" not in session or not usuario_admin(): return redirect(url_for("index"))
     garantir_banco()
-    conn = sqlite3.connect(CAMINHO_DB)
+    conn, tipo = obter_conexao()
     cursor = conn.cursor()
     cursor.execute("SELECT id, ano, mes, data, localidade FROM residuos ORDER BY id DESC")
     rows = cursor.fetchall()
@@ -1075,9 +1163,10 @@ def excluir_registro():
     reg_id = request.form.get("registro_id")
     if reg_id and reg_id.isdigit():
         garantir_banco()
-        conn = sqlite3.connect(CAMINHO_DB)
+        conn, tipo = obter_conexao()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM residuos WHERE id = ?", (reg_id,))
+        ph = "%s" if tipo == "postgres" else "?"
+        cursor.execute(f"DELETE FROM residuos WHERE id = {ph}", (reg_id,))
         conn.commit()
         conn.close()
         flash("Registro removido!", "success")
