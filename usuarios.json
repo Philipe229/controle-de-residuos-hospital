@@ -10,5 +10,9 @@
     "teste": {
         "hash": "scrypt:32768:8:1$5uFjD2p1OINKBFBs$e5749a520095d9e8e4c8453da6797edb6265130223a915f2f2981170bfe7bc5552d50835d3765af00c89b1feb9eb752ad8d62dadd05e59ed333bd8cc5dee6e98",
         "role": "operador"
+    },
+    "jeferson": {
+        "hash": "scrypt:32768:8:1$y4KSKiedDjjChGg8$4991402362583da92607f8dc846a4f6cc8491f8296b0404b4da3bb69b1c6f19d283912169655eab06e3fdf2cb6b2a15ef0808324cec12eb1964def1f4eb2d277",
+        "role": "operador"
     }
 }

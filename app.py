@@ -143,6 +143,8 @@ HTML_FORMULARIO = """
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plugin para exibir rótulos/porcentagens diretamente no gráfico -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Inter', sans-serif; } </style>
 </head>
@@ -307,8 +309,9 @@ HTML_FORMULARIO = """
             </a>
         </div>
 
-        <div class="w-full xl:col-span-7 bg-white rounded-2xl shadow-xl p-6 border border-slate-200/80 flex flex-col justify-between min-h-[580px]">
-            <div>
+        <div class="w-full xl:col-span-7 flex flex-col gap-6">
+            <!-- Gráfico 1: Comparativo Mensal Consolidado -->
+            <div class="bg-white rounded-2xl shadow-xl p-6 border border-slate-200/80">
                 <div class="flex items-center justify-between mb-4 border-b pb-3">
                     <div>
                         <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -318,12 +321,32 @@ HTML_FORMULARIO = """
                     </div>
                     
                     <button type="button" onclick="abrirModalGrafico()" class="py-2 px-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 flex items-center gap-1.5 transition cursor-pointer">
-                        <i data-lucide="maximize-2" class="w-4 h-4"></i> Expandir / Baixar Gráfico
+                        <i data-lucide="maximize-2" class="w-4 h-4"></i> Expandir / Baixar
                     </button>
                 </div>
 
-                <div class="relative w-full h-[460px]">
+                <div class="relative w-full h-[320px]">
                     <canvas id="graficoResiduos"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 2: Distribuição por Setores com Porcentagens -->
+            <div class="bg-white rounded-2xl shadow-xl p-6 border border-slate-200/85">
+                <div class="flex items-center justify-between mb-4 border-b pb-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-5 h-5 text-emerald-600"></i> Distribuição de Resíduos por Setores (%)
+                        </h3>
+                        <p class="text-xs text-slate-500">Percentagem e peso total acumulado por localidade</p>
+                    </div>
+
+                    <button type="button" onclick="baixarGraficoSetorPNG()" class="py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-1.5 transition cursor-pointer">
+                        <i data-lucide="download" class="w-4 h-4"></i> Baixar Gráfico (.png)
+                    </button>
+                </div>
+
+                <div class="relative w-full h-[320px] flex items-center justify-center">
+                    <canvas id="graficoSetor"></canvas>
                 </div>
             </div>
         </div>
@@ -389,6 +412,7 @@ HTML_FORMULARIO = """
                 });
             }
 
+            // Gráfico Mensal de Barras
             const ctx = document.getElementById('graficoResiduos').getContext('2d');
             const dg = {{ dados_grafico | tojson }};
             const labels = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
@@ -408,9 +432,61 @@ HTML_FORMULARIO = """
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', labels: { font: { family: 'Inter', size: 11 } } } },
+                    plugins: { legend: { position: 'top', labels: { font: { family: 'Inter', size: 10 } } } },
                     scales: { y: { beginAtZero: true, grid: { color: 'rgba(226, 232, 240, 0.6)' } }, x: { grid: { display: false } } }
                 }
+            });
+
+            // Gráfico de Setores (Doughnut) com Porcentagens Automáticas
+            const ctxSetor = document.getElementById('graficoSetor').getContext('2d');
+            const ds = {{ dados_setor | tojson }};
+            
+            new Chart(ctxSetor, {
+                type: 'doughnut',
+                data: {
+                    labels: ds.labels,
+                    datasets: [{
+                        data: ds.valores,
+                        backgroundColor: [
+                            'rgba(30, 58, 138, 0.85)',
+                            'rgba(16, 185, 129, 0.85)',
+                            'rgba(217, 119, 6, 0.85)',
+                            'rgba(225, 29, 72, 0.85)',
+                            'rgba(147, 51, 234, 0.85)',
+                            'rgba(14, 165, 233, 0.85)',
+                            'rgba(244, 63, 94, 0.85)',
+                            'rgba(234, 179, 8, 0.85)',
+                            'rgba(71, 85, 105, 0.85)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { family: 'Inter', size: 11 } }
+                        },
+                        // Configuração do plugin para calcular e mostrar a % no próprio gráfico
+                        datalabels: {
+                            color: '#fff',
+                            font: {
+                                family: 'Inter',
+                                weight: 'bold',
+                                size: 11
+                            },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if (sum === 0) return '0%';
+                                let percentage = (value * 100 / sum).toFixed(1) + "%";
+                                return percentage;
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
             });
         });
 
@@ -453,6 +529,17 @@ HTML_FORMULARIO = """
             const link = document.createElement('a');
             link.href = imageURL;
             link.download = 'grafico_comparativo_residuos.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function baixarGraficoSetorPNG() {
+            const canvas = document.getElementById('graficoSetor');
+            const imageURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = imageURL;
+            link.download = 'grafico_residuos_por_setores.png';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -663,6 +750,8 @@ def index():
     garantir_banco()
     conn = sqlite3.connect(CAMINHO_DB)
     cursor = conn.cursor()
+    
+    # 1. Consulta para o Gráfico Mensal
     cursor.execute("""
         SELECT mes, 
                SUM(peso_infectante), 
@@ -673,6 +762,15 @@ def index():
         FROM residuos GROUP BY mes
     """)
     rows = cursor.fetchall()
+
+    # 2. Consulta para o Gráfico por Setores (Soma total dos pesos por localidade)
+    cursor.execute("""
+        SELECT localidade, 
+               SUM(peso_infectante + peso_organico + peso_comum + peso_reciclavel + peso_quimico) 
+        FROM residuos GROUP BY localidade
+    """)
+    rows_setor = cursor.fetchall()
+    
     conn.close()
 
     dados_grafico = {
@@ -689,11 +787,20 @@ def index():
         dados_grafico["reciclavel"][mes] = p_rec or 0.0
         dados_grafico["quimico"][mes] = p_qui or 0.0
 
+    # Preparar dados para o gráfico de setores
+    labels_setor = [r[0] for r in rows_setor] if rows_setor else ["Sem Registros"]
+    valores_setor = [r[1] for r in rows_setor] if rows_setor else [0]
+    dados_setor = {
+        "labels": labels_setor,
+        "valores": valores_setor
+    }
+
     return render_template_string(
         HTML_FORMULARIO, 
         usuario_atual=usuario_logado, 
         e_admin=e_admin, 
-        dados_grafico=dados_grafico
+        dados_grafico=dados_grafico,
+        dados_setor=dados_setor
     )
 
 @app.route("/salvar", methods=["POST"])

@@ -2,3 +2,4 @@ Flask
 waitress
 openpyxl
 pypdf
+Werkzeug
